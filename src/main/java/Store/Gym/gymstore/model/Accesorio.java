@@ -6,22 +6,19 @@ import lombok.*;
 
 @Data
 @Entity
-@Table(name= "accesorios")
+@Table(name = "accessories")
 public class Accesorio {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @Column(nullable = false)
-    private String nombre;
+    private String name; // Ej: "Cinturón de Powerlifting SBD"
 
     @Column(nullable = false)
-    private String categoria;
+    private String category; // Ej: "Equipamiento", "Suplementos"
 
-    @Column(nullable = false)
-    private Double precio;
-
-    @Column(nullable = false)
+    private Double price;
     private Integer stock;
 }
