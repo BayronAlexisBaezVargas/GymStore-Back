@@ -105,5 +105,5 @@ jobs:
         with:
           context: .
           push: true
-          # Etiqueta la imagen con tu usuario y el nombre de la app
-          tags: bayronalexisbaezvargas/gymstore-api:latest
+          # Etiqueta la imagen con tu usuario y el nombre de la ap
+          tags: BayronAlexisBaezVargas/gymstore-api:latest
