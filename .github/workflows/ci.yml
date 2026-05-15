@@ -76,13 +76,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Análisis de Dependencias con Snyk
         uses: snyk/actions/maven@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          # Esto bloquea el pipeline si encuentra vulnerabilidades de nivel ALTO o CRÍTICO
-          args: --severity-threshold=high
+          # Bloquea en High/Critical y genera el reporte JSON
+          args: --severity-threshold=high --json-file-output=snyk-report.json
+
+      - name: Guardar Reporte de Snyk como Artefacto
+        uses: actions/upload-artifact@v4
+        if: always() # Garantiza que el reporte se suba incluso si Snyk detecta fallos
+        with:
+          name: snyk-security-report
+          path: snyk-report.json
 
   # ==========================================
   # 4. ENTREGA CONTINUA A DOCKER HUB (IE1, IE4)
