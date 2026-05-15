@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. Contenedor de Base de Datos
+  # ==========================================
+  db:
+    image: postgres:15-alpine
+    container_name: gym_postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      # Absorbe las variables de tu entorno local/GitHub Actions (Sin archivo .env)
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: gymstore_db
+    volumes:
+      # Persistencia: Evita que los accesorios se borren si apagas el contenedor
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Verifica que la BD esté lista antes de levantar la API
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d gymstore_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # 2. Contenedor de tu API Spring Boot
+  # ==========================================
+  api:
+    build: . # Construye la imagen usando tu Dockerfile
+    container_name: gym_api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # EL CAMBIO DE BD: Ahora la URL apunta al contenedor 'db', no a AlwaysData
+      DB_URL: jdbc:postgresql://db:5432/gymstore_db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy # Espera al healthcheck de la BD
+
+# Declaramos el volumen persistente
+volumes:
+  postgres_data:

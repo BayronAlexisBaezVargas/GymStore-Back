@@ -3,7 +3,7 @@ package Store.Gym.gymstore.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-
+//aaa
 @Data
 @Entity
 @Table(name = "accessories")
