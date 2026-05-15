@@ -37,4 +37,4 @@ Cada commit debe tener un propósito claro usando los siguientes prefijos:
 
 ## ⚙️ Configuración para Desarrollo Local
 
-El proyecto utiliza variables de entorno para proteger las credenciales de la base de datos. Para ejecutarlo en tu máquina local, debes configurar las
+El proyecto utiliza variables de entorno para proteger las credenciales de la base de datos. Para ejecutarlo en tu máquina local, debes configurar las.
