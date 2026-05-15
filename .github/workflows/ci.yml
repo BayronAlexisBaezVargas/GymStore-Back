@@ -1,6 +1,6 @@
 name: CI/CD Pipeline - GymStore API
 
-# Se ejecuta al hacer Push o Pull Request hacia las ramas principales
+# Se ejecuta al hacer Push o Pull Request hacia las ramas principale
 on:
   push:
     branches: [ "main", "develop" ]
