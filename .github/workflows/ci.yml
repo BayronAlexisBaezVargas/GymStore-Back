@@ -106,4 +106,4 @@ jobs:
           context: .
           push: true
           # Etiqueta la imagen con tu usuario y el nombre de la app
-          tags: ${{ secrets.DOCKER_USERNAME }}/gymstore-api:latest
+          tags: bayronalexisbaezvargas/gymstore-api:latest
