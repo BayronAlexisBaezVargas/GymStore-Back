@@ -1,6 +1,6 @@
 name: CI/CD Pipeline - GymStore API
 
-# Se ejecuta al hacer Push o Pull Request hacia las ramas principale
+# Se ejecuta al hacer Push o Pull Request hacia las ramas principales
 on:
   push:
     branches: [ "main", "develop" ]
@@ -97,7 +97,8 @@ jobs:
       - name: Iniciar sesión en Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
+          # Usuario escrito directamente en minúsculas para evitar errores
+          username: bayronalexisbaezvargas
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Construir y Subir Imagen Docker
@@ -105,5 +106,5 @@ jobs:
         with:
           context: .
           push: true
-          # Etiqueta la imagen con tu usuario y el nombre de la ap
-          tags: BayronAlexisBaezVargas/gymstore-api:latest
+          # Etiqueta en minúsculas obligatoriamente
+          tags: bayronalexisbaezvargas/gymstore-api:latest
