@@ -1,46 +1,150 @@
-🏋️‍♂️ GymStore API - Arquitectura DevOps y CI/CD
+# 🏋️ GymStore
 
-Este repositorio contiene el microservicio de gestión de inventario para la tienda de accesorios de gimnasio GymStore. En esta fase del proyecto, la aplicación ha sido contenerizada, orquestada y automatizada mediante un pipeline robusto de Integración y Entrega Continua (CI/CD).
+API REST para la gestión y venta de productos deportivos, construida con Spring Boot 3 y PostgreSQL.
 
-🏗️ 1. Arquitectura de Contenedores (Docker)
+---
 
-El proyecto utiliza Docker y Docker Compose para garantizar la portabilidad, el aislamiento y la fácil ejecución en cualquier entorno.
+## 📋 Tabla de contenidos
 
-API (Spring Boot): Se utiliza un Dockerfile optimizado con la técnica de Multi-stage build. La primera etapa utiliza Maven para compilar el código fuente, y la segunda etapa empaqueta únicamente el archivo .jar resultante en una imagen ligera de Java (JRE), reduciendo drásticamente el peso final y la superficie de ataque.
+- [Descripción](#descripción)
+- [Tecnologías](#tecnologías)
+- [Requisitos previos](#requisitos-previos)
+- [Configuración](#configuración)
+- [Ejecución con Docker](#ejecución-con-docker)
+- [Endpoints principales](#endpoints-principales)
+- [Tests](#tests)
+- [Cobertura de código](#cobertura-de-código)
 
-Base de Datos (PostgreSQL): Orquestada junto a la API a través de docker-compose.yml. Se implementaron Healthchecks para asegurar que la base de datos esté completamente inicializada y sana antes de que la API intente conectarse. Se utilizan volúmenes (postgres_data) para garantizar la persistencia de la información.
+---
 
-Ejecución Local
+## Descripción
 
-Para levantar la arquitectura completa en un entorno local, se deben inyectar las credenciales mediante variables de entorno en la terminal (sin usar archivos .env por seguridad):
+GymStore es una aplicación backend que expone una API REST para gestionar la venta de productos deportivos. Permite administrar el catálogo de productos, procesar pedidos y gestionar la información relacionada con la tienda.
 
-DB_USER=postgres DB_PASSWORD=admin docker compose up -d --build
+---
 
+## Tecnologías
 
-⚙️ 2. Pipeline CI/CD (GitHub Actions)
+| Tecnología | Versión |
+|---|---|
+| Java | 17 |
+| Spring Boot | 3.4.3 |
+| Spring Data JPA | — |
+| Spring Validation | — |
+| Spring Actuator | — |
+| PostgreSQL | 42.7.5 |
+| Lombok | — |
+| JaCoCo | 0.8.12 |
+| H2 (tests) | — |
 
-Se implementó un pipeline automatizado (ci.yml) que se activa con eventos push y pull_request hacia las ramas develop y main. El pipeline consta de 4 etapas críticas:
+---
 
-Build & Test: Levanta un entorno efímero usando Docker Compose (API + BD simulada) y ejecuta las pruebas unitarias y de integración de Maven (mvn clean test).
+## Requisitos previos
 
-Análisis de Código Estático (SonarCloud): Inspecciona el código en busca de vulnerabilidades, code smells y bugs. Existe un Quality Gate estricto que bloquea el pipeline si el código no cumple con los estándares corporativos.
+- [Docker](https://www.docker.com/) y [Docker Compose](https://docs.docker.com/compose/) instalados
+- Java 17+ (solo si se desea ejecutar localmente sin Docker)
+- Maven 3.8+ (solo si se desea ejecutar localmente sin Docker)
 
-Escaneo de Dependencias (Snyk): Analiza el archivo pom.xml en busca de vulnerabilidades conocidas (CVEs) en librerías de terceros.
+---
 
-Umbral de bloqueo: Está configurado para fallar el pipeline si detecta vulnerabilidades de nivel ALTO o CRÍTICO (--severity-threshold=high).
+## Configuración
 
-Artefactos: Genera un archivo snyk-report.json que se sube automáticamente como un artefacto descargable en GitHub Actions para futuras auditorías.
+Crea un archivo `.env` en la raíz del proyecto con las siguientes variables (o configúralas directamente en `docker-compose.yml`):
 
-Entrega Continua (Docker Hub): Si (y solo si) el código pasa todas las pruebas anteriores y es fusionado a la rama main, el pipeline construye la imagen Docker final y la publica automáticamente en el registro público bajo la etiqueta bayronbaez/gymstore-api:latest.
+```env
+POSTGRES_DB=gymstore
+POSTGRES_USER=tu_usuario
+POSTGRES_PASSWORD=tu_contraseña
+SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/gymstore
+SPRING_DATASOURCE_USERNAME=tu_usuario
+SPRING_DATASOURCE_PASSWORD=tu_contraseña
+```
 
-🔍 3. Garantía de Calidad y Trazabilidad
+---
 
-Para cumplir con los más altos estándares de desarrollo, la trazabilidad y la calidad se garantizan de la siguiente manera:
+## Ejecución con Docker
 
-Trazabilidad del Código a la Producción: Cada imagen subida a Docker Hub es el resultado directo de un commit específico en la rama main. No hay despliegues manuales; todo pasa por el historial auditable de GitHub Actions.
+### 1. Clonar el repositorio
 
-Calidad de Código Inquebrantable: La integración de SonarCloud actúa como un juez imparcial. Si un desarrollador introduce código duplicado o inseguro, el Quality Gate falla automáticamente, impidiendo que ese código llegue a producción.
+```bash
+git clone https://github.com/tu-usuario/gymstore.git
+cd gymstore
+```
 
-Seguridad Proactiva: Al utilizar Snyk en cada PR, nos aseguramos de que no ingresen librerías obsoletas (ej. Tomcat vulnerables). Además, al guardar los reportes JSON como Artifacts, el equipo de seguridad puede trazar históricamente qué vulnerabilidades se detectaron en cada ejecución.
+### 2. Construir y levantar los contenedores
 
-Entornos Idénticos: Gracias a la orquestación con Docker Compose, el entorno donde se ejecutan las pruebas automáticas en la nube es exactamente el mismo entorno donde el desarrollador programa y donde la aplicación se ejecutará en producción.
+```bash
+docker compose up --build
+```
+
+La aplicación estará disponible en: `http://localhost:8080`
+
+### 3. Detener los contenedores
+
+```bash
+docker compose down
+```
+
+> Para eliminar también los volúmenes de base de datos:
+> ```bash
+> docker compose down -v
+> ```
+
+---
+
+## Endpoints principales
+
+La API base es: `http://localhost:8080/api`
+
+> Documentación completa disponible vía Actuator en `http://localhost:8080/actuator`
+
+---
+
+## Tests
+
+El proyecto usa **H2** como base de datos en memoria para los tests, por lo que no requiere PostgreSQL al correrlos.
+
+```bash
+# Ejecutar tests
+./mvnw test
+```
+
+---
+
+## Cobertura de código
+
+El proyecto tiene integrado **JaCoCo** para medir la cobertura. El reporte se genera automáticamente al correr los tests:
+
+```bash
+./mvnw test
+```
+
+El reporte HTML estará disponible en:
+
+```
+target/site/jacoco/index.html
+```
+
+---
+
+## 📁 Estructura del proyecto
+
+```
+gymstore/
+├── src/
+│   ├── main/
+│   │   ├── java/Store/Gym/gymstore/
+│   │   └── resources/
+│   │       └── application.properties
+│   └── test/
+├── docker-compose.yml
+├── Dockerfile
+├── pom.xml
+└── README.md
+```
+
+---
+
+## Licencia
+
+Este proyecto se encuentra bajo la licencia [MIT](LICENSE).
