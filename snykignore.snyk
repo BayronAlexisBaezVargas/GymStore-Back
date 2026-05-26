@@ -1,0 +1,7 @@
+version: v1
+ignore:
+  # Ignoramos vulnerabilidades que vienen integradas en el framework Spring
+  SNYK-JAVA-ORGAPACHETOMCATEMBED-16643259:
+    reason: "Vulnerabilidad en Tomcat integrada, esperando actualización de Spring Boot"
+  SNYK-JAVA-ORGSPRINGFRAMEWORK-12008931:
+    reason: "Vulnerabilidad transitiva, resuelta con Spring Boot 3.4.3"
