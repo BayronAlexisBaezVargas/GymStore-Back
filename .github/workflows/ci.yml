@@ -1,6 +1,6 @@
 name: CI/CD Pipeline - GymStore API
 
-# Se ejecuta al hacer Push o Pull Request hacia las ramas principale
+# Se ejecuta al hacer Push o Pull Request hacia las ramas principales
 on:
   push:
     branches: [ "main", "develop" ]
@@ -9,7 +9,7 @@ on:
 
 jobs:
   # ==========================================
-  # 1. PRUEBAS Y ENTORNO SIMULADO (IE2, IE4)
+  # 1. PRUEBAS Y ENTORNO SIMULADO
   # ==========================================
   build-and-test:
     runs-on: ubuntu-latest
@@ -40,7 +40,7 @@ jobs:
         run: mvn clean test
 
   # ==========================================
-  # 2. ANÁLISIS DE CÓDIGO CON SONARCLOUD (IE3)
+  # 2. ANÁLISIS DE CÓDIGO CON SONARCLOUD
   # ==========================================
   security-sonar:
     needs: build-and-test # Espera a que pasen las pruebas
@@ -69,23 +69,31 @@ jobs:
           -DskipTests # Saltamos las pruebas porque ya corrieron en el job anterior
 
   # ==========================================
-  # 3. ESCANEO DE VULNERABILIDADES CON SNYK (IE3)
+  # 3. ESCANEO DE VULNERABILIDADES CON SNYK
   # ==========================================
   security-snyk:
     needs: build-and-test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Análisis de Dependencias con Snyk
         uses: snyk/actions/maven@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          # Esto bloquea el pipeline si encuentra vulnerabilidades de nivel ALTO o CRÍTICO
-          args: --severity-threshold=high
+          # Bloquea en High/Critical y genera el reporte JSON
+          args: --severity-threshold=high --json-file-output=snyk-report.json
+
+      - name: Guardar Reporte de Snyk como Artefacto
+        uses: actions/upload-artifact@v4
+        if: always() # Garantiza que el reporte se suba incluso si Snyk detecta fallos
+        with:
+          name: snyk-security-report
+          path: snyk-report.json
 
   # ==========================================
-  # 4. ENTREGA CONTINUA A DOCKER HUB (IE1, IE4)
+  # 4. ENTREGA CONTINUA A DOCKER HUB
   # ==========================================
   docker-publish:
     needs: [security-sonar, security-snyk] # Solo sube la imagen si el código es seguro
@@ -97,7 +105,8 @@ jobs:
       - name: Iniciar sesión en Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
+          # Usuario escrito directamente en minúsculas para evitar errores
+          username: bayronbaez
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Construir y Subir Imagen Docker
@@ -105,5 +114,5 @@ jobs:
         with:
           context: .
           push: true
-          # Etiqueta la imagen con tu usuario y el nombre de la app
-          tags: ${{ secrets.DOCKER_USERNAME }}/gymstore-api:latest
+          # Etiqueta en minúsculas obligatoriamente
+          tags: bayronbaez/gymstore-api:latest
