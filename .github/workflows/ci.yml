@@ -78,8 +78,9 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          # AÑADIMOS --snyk-file=.snyk para forzar que lea tus exclusiones
-          args: --severity-threshold=high --json-file-output=snyk-report.json --snyk-file=.snyk
+          # SOLO argumentos de severidad. Nada de archivos .snyk.
+          # Si Snyk encuentra vulnerabilidades, esto fallará POR SEGURIDAD, no por error de archivo.
+          args: --severity-threshold=high --json-file-output=snyk-report.json
 
       - name: Guardar Reporte de Snyk como Artefacto
         uses: actions/upload-artifact@v4
