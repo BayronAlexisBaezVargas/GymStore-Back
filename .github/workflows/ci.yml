@@ -9,7 +9,7 @@ on:
 
 jobs:
   # ==========================================
-  # 1. PRUEBAS Y ENTORNO SIMULADO (IE2, IE4)
+  # 1. PRUEBAS Y ENTORNO SIMULADO
   # ==========================================
   build-and-test:
     runs-on: ubuntu-latest
@@ -40,7 +40,7 @@ jobs:
         run: mvn clean test
 
   # ==========================================
-  # 2. ANÁLISIS DE CÓDIGO CON SONARCLOUD (IE3)
+  # 2. ANÁLISIS DE CÓDIGO CON SONARCLOUD
   # ==========================================
   security-sonar:
     needs: build-and-test # Espera a que pasen las pruebas
@@ -69,7 +69,7 @@ jobs:
           -DskipTests # Saltamos las pruebas porque ya corrieron en el job anterior
 
   # ==========================================
-  # 3. ESCANEO DE VULNERABILIDADES CON SNYK (IE3)
+  # 3. ESCANEO DE VULNERABILIDADES CON SNYK
   # ==========================================
   security-snyk:
     needs: build-and-test
@@ -93,7 +93,7 @@ jobs:
           path: snyk-report.json
 
   # ==========================================
-  # 4. ENTREGA CONTINUA A DOCKER HUB (IE1, IE4)
+  # 4. ENTREGA CONTINUA A DOCKER HUB
   # ==========================================
   docker-publish:
     needs: [security-sonar, security-snyk] # Solo sube la imagen si el código es seguro
