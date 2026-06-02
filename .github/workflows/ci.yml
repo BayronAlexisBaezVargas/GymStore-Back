@@ -7,7 +7,7 @@ on:
 
 jobs:
   # ==========================================
-  # 1. PRUEBAS Y ENTORNO SIMULAD
+  # 1. PRUEBAS Y ENTORNO SIMULADo
   # ==========================================
   build-and-test:
     runs-on: ubuntu-latest
