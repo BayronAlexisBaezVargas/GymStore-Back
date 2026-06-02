@@ -41,7 +41,7 @@ class AccesorioControllerTest {
 
         when(accesorioRepository.findAll()).thenReturn(Arrays.asList(accesorio));
 
-        mockMvc.perform(get("/api/accessorios"))
+        mockMvc.perform(get("/api/accesorios"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Cinturon de Cuero"))
                 .andExpect(jsonPath("$[0].category").value("Equipamiento"));
@@ -60,7 +60,7 @@ class AccesorioControllerTest {
 
         String jsonContent = "{\"name\":\"Mancuernas 5kg\", \"category\":\"Pesas\", \"price\":15000.0, \"stock\":20}";
 
-        mockMvc.perform(post("/api/accessorios")
+        mockMvc.perform(post("/api/accesorios")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonContent))
                 .andExpect(status().isOk())
