@@ -232,6 +232,23 @@ Push a main
 
 ---
 
+## Arquitectura y Microservicios Próximos
+
+Este proyecto ha comenzado su evolución hacia una arquitectura de microservicios. Actualmente contamos con el microservicio inicial (`gym-api`), pero el ecosistema crecerá con los siguientes dominios:
+
+1. 👤 **Microservicio de Usuarios y Autenticación (`gym-auth`)**: 
+   - **Próximamente:** Manejo de registro, inicio de sesión (Login con JWT) y recuperación de contraseñas. Gestión de perfiles y seguridad para proteger las rutas.
+2. 🗄️ **Microservicio de Inventario (`gym-inventory`)**: 
+   - **Próximamente:** Controlará el stock real de los productos (accesorios, suplementos, etc.). Aprenderemos cómo comunicar el catálogo con el inventario para reservar stock.
+3. 📦 **Microservicio de Catálogo (`gym-catalog`)**: 
+   - *Nota: Evolución de nuestro actual `gym-api`. Se encargará exclusivamente de gestionar toda la información y CRUD de los productos.*
+4. 🛒 **Microservicio de Órdenes (`gym-orders`)**: 
+   - **Futuro:** Manejo del carrito de compras y creación de la orden final comunicándose con el Catálogo y el Inventario.
+5. 💳 **Microservicio de Pagos (`gym-payments`)**: 
+   - **Futuro:** Integración con pasarelas de pago reales.
+
+---
+
 ## 📁 Estructura del proyecto
 
 ```
@@ -239,15 +256,16 @@ gymstore/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml
-├── src/
-│   ├── main/
-│   │   ├── java/Store/Gym/gymstore/
-│   │   └── resources/
-│   │       └── application.properties
-│   └── test/
-├── docker-compose.yml
-├── Dockerfile
-├── pom.xml
+├── gym-api/                  # Primer microservicio (Catálogo de accesorios)
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/Store/Gym/gymstore/
+│   │   │   └── resources/
+│   │   │       └── application.properties
+│   │   └── test/
+│   ├── Dockerfile
+│   └── pom.xml
+├── docker-compose.yml        # Orquestador central de microservicios
 └── README.md
 ```
 
