@@ -29,6 +29,7 @@ jobs:
         run: docker compose up -d db
 
       - name: Ejecutar Pruebas de Maven
+        working-directory: ./gym-api
         env:
           DB_URL: jdbc:postgresql://localhost:5432/gymstore_db
           DB_USER: ${{ secrets.DB_USER }}
@@ -53,6 +54,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Escaneo de Calidad con SonarQube
+        working-directory: ./gym-api
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -81,7 +83,7 @@ jobs:
         with:
           # SOLO argumentos de severidad. Nada de archivos .snyk.
           # Si Snyk encuentra vulnerabilidades, esto fallará POR SEGURIDAD, no por error de archivo.
-          args: --severity-threshold=high --json-file-output=snyk-report.json
+          args: --file=gym-api/pom.xml --severity-threshold=high --json-file-output=snyk-report.json
 
       - name: Guardar Reporte de Snyk como Artefacto
         uses: actions/upload-artifact@v4
@@ -109,6 +111,6 @@ jobs:
       - name: Construir y Subir Imagen Docker
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./gym-api
           push: true
           tags: bayronbaez/gymstore-api:latest
