@@ -7,7 +7,7 @@ on:
 
 jobs:
   # ==========================================
-  # 1. PRUEBAS Y ENTORNO SIMULADo
+  # 1. PRUEBAS Y ENTORNO SIMULADO
   # ==========================================
   build-and-test:
     runs-on: ubuntu-latest
@@ -28,8 +28,16 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: docker compose up -d db
 
-      - name: Ejecutar Pruebas de Maven
+      - name: Ejecutar Pruebas de Maven (Catálogo)
         working-directory: ./gym-api
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/gymstore_db
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: mvn clean test
+
+      - name: Ejecutar Pruebas de Maven (Usuarios)
+        working-directory: ./ms-usuario
         env:
           DB_URL: jdbc:postgresql://localhost:5432/gymstore_db
           DB_USER: ${{ secrets.DB_USER }}
@@ -53,18 +61,32 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Escaneo de Calidad con SonarQube
+      - name: Escaneo de Calidad con SonarQube (Catálogo)
         working-directory: ./gym-api
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar 
-          -Dsonar.projectKey=${{ secrets.PROJECT_KEY_SONAR }} 
+          -Dsonar.projectKey=${{ secrets.PROJECT_KEY_SONAR_API }} 
           -Dsonar.organization=${{ secrets.ORGANIZATION_SONAR }} 
           -Dsonar.host.url=https://sonarcloud.io 
           -Dsonar.login=${{ secrets.SONAR_TOKEN }} 
           -DskipTests
+
+      - name: Escaneo de Calidad con SonarQube (Usuarios)
+        working-directory: ./ms-usuario
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_USER }}
+        run: >
+          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar 
+          -Dsonar.projectKey=${{ secrets.PROJECT_KEY_SONAR_USER }} 
+          -Dsonar.organization=${{ secrets.ORGANIZATION_SONAR }} 
+          -Dsonar.host.url=https://sonarcloud.io 
+          -Dsonar.login=${{ secrets.SONAR_TOKEN_USER }} 
+          -DskipTests
+        continue-on-error: true
 
   # ==========================================
   # 3. ESCANEO DE VULNERABILIDADES CON SNYK
@@ -75,25 +97,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Análisis de Dependencias con Snyk
+      - name: Análisis de Dependencias con Snyk (Catálogo)
         uses: snyk/actions/maven@master
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          # SOLO argumentos de severidad. Nada de archivos .snyk.
-          # Si Snyk encuentra vulnerabilidades, esto fallará POR SEGURIDAD, no por error de archivo.
-          args: --file=gym-api/pom.xml --severity-threshold=high --json-file-output=snyk-report.json
+          args: --file=gym-api/pom.xml --severity-threshold=high --json-file-output=snyk-report-api.json
 
-      - name: Guardar Reporte de Snyk como Artefacto
+      - name: Análisis de Dependencias con Snyk (Usuarios)
+        uses: snyk/actions/maven@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --file=ms-usuario/pom.xml --severity-threshold=high --json-file-output=snyk-report-user.json
+
+      - name: Guardar Reportes de Snyk como Artefactos
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: snyk-security-report
-          path: snyk-report.json
+          name: snyk-security-reports
+          path: |
+            snyk-report-api.json
+            snyk-report-user.json
 
   # ==========================================
-  # 4. ENTREGA CONTINUA A DOCKER HUB
+  # 4A. ENTREGA CONTINUA A DOCKER HUB
   # ==========================================
   docker-publish:
     needs: [security-sonar, security-snyk]
@@ -102,15 +132,72 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Compilar artefactos (Catálogo y Usuarios)
+        run: |
+          cd gym-api && mvn clean package -DskipTests
+          cd ../ms-usuario && mvn clean package -DskipTests
+
       - name: Iniciar sesión en Docker Hub
         uses: docker/login-action@v3
         with:
-          username: bayronbaez
+          username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Construir y Subir Imagen Docker
+      - name: Construir y Subir Imagen Docker (Catálogo)
         uses: docker/build-push-action@v5
         with:
           context: ./gym-api
           push: true
-          tags: bayronbaez/gymstore-api:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/gymstore-api:latest
+
+      - name: Construir y Subir Imagen Docker (Usuarios)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-usuario
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/gymstore-user-api:latest
+
+  # ==========================================
+  # 5. DESPLIEGUE A EC2 USANDO SSH (FALLBACK SEGURO)
+  # ==========================================
+  deploy-ec2-ssh:
+    needs: docker-publish
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copiar docker-compose.yml a EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "/home/ec2-user/"
+
+      - name: Ejecutar despliegue en EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ec2-user
+            
+            # Cambiar 'build' por las imágenes reales de Docker Hub
+            sed -i "s|build: ./gym-api|image: ${{ secrets.DOCKER_USERNAME }}/gymstore-api:latest|g" docker-compose.yml
+            sed -i "s|build: ./ms-usuario|image: ${{ secrets.DOCKER_USERNAME }}/gymstore-user-api:latest|g" docker-compose.yml
+            
+            export DB_USER="${{ secrets.DB_USER }}"
+            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            
+            # Iniciar sesión en DockerHub
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            
+            # Bajar imágenes actualizadas y levantar el servicio
+            docker-compose pull
+            docker-compose up -d --remove-orphans
+            
+            # Limpiar imágenes antiguas
+            docker image prune -af
