@@ -68,7 +68,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar 
-          -Dsonar.projectKey=${{ secrets.PROJECT_KEY_SONAR_API }} 
+          -Dsonar.projectKey=${{ secrets.PROJECT_KEY_SONAR }} 
           -Dsonar.organization=${{ secrets.ORGANIZATION_SONAR }} 
           -Dsonar.host.url=https://sonarcloud.io 
           -Dsonar.login=${{ secrets.SONAR_TOKEN }} 
@@ -78,13 +78,13 @@ jobs:
         working-directory: ./ms-usuario
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_USER }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar 
-          -Dsonar.projectKey=${{ secrets.PROJECT_KEY_SONAR_USER }} 
+          -Dsonar.projectKey=${{ secrets.PROJECT_KEY_SONAR }} 
           -Dsonar.organization=${{ secrets.ORGANIZATION_SONAR }} 
           -Dsonar.host.url=https://sonarcloud.io 
-          -Dsonar.login=${{ secrets.SONAR_TOKEN_USER }} 
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }} 
           -DskipTests
         continue-on-error: true
 
