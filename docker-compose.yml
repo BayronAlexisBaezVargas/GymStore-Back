@@ -26,7 +26,7 @@ services:
       retries: 5
 
   # ==========================================
-  # 2. Contenedor de tu API Spring Boot
+  # 2. Contenedor de tu API Spring Boot (Catálogo)
   # ==========================================
   api:
     build: ./gym-api # Construye la imagen usando tu Dockerfile
@@ -42,6 +42,23 @@ services:
     depends_on:
       db:
         condition: service_healthy # Espera al healthcheck de la BD
+
+  # ==========================================
+  # 3. Contenedor de Usuarios (Microservicio)
+  # ==========================================
+  user_api:
+    build: ./ms-usuario # Construye la imagen del microservicio de usuario
+    container_name: gym_user_api
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/gymstore_db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+    depends_on:
+      db:
+        condition: service_healthy
 
 # Declaramos el volumen persistente
 volumes:
