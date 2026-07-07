@@ -29,7 +29,6 @@
 	<properties>
 		<postgresql.version>42.7.12</postgresql.version>
 		<tomcat.version>10.1.40</tomcat.version>
-		<spring-framework.version>6.2.7</spring-framework.version>
 		<jackson-bom.version>2.18.4</jackson-bom.version>
 		<logback.version>1.5.36</logback.version>
 		<java.version>17</java.version>
