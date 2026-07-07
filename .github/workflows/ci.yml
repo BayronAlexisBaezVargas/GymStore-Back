@@ -86,7 +86,6 @@ jobs:
           -Dsonar.host.url=https://sonarcloud.io 
           -Dsonar.login=${{ secrets.SONAR_TOKEN }} 
           -DskipTests
-        continue-on-error: true
 
   # ==========================================
   # 3. ESCANEO DE VULNERABILIDADES CON SNYK
@@ -99,7 +98,6 @@ jobs:
 
       - name: Análisis de Dependencias con Snyk (Catálogo)
         uses: snyk/actions/maven@master
-        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -107,7 +105,6 @@ jobs:
 
       - name: Análisis de Dependencias con Snyk (Usuarios)
         uses: snyk/actions/maven@master
-        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -123,7 +120,7 @@ jobs:
             snyk-report-user.json
 
   # ==========================================
-  # 4A. ENTREGA CONTINUA A DOCKER HUB
+  # 4A. ENTREGA CONTINUA A AMAZON ECR
   # ==========================================
   docker-publish:
     needs: [security-sonar, security-snyk]
@@ -137,28 +134,32 @@ jobs:
           cd gym-api && mvn clean package -DskipTests
           cd ../ms-usuario && mvn clean package -DskipTests
 
-      - name: Iniciar sesión en Docker Hub
-        uses: docker/login-action@v3
+      - name: Configurar AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
 
-      - name: Construir y Subir Imagen Docker (Catálogo)
-        uses: docker/build-push-action@v5
-        with:
-          context: ./gym-api
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/gymstore-api:latest
+      - name: Iniciar sesión en Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Construir y Subir Imagen Docker (Usuarios)
-        uses: docker/build-push-action@v5
-        with:
-          context: ./ms-usuario
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/gymstore-user-api:latest
+      - name: Construir y Subir Imagen ECR (Catálogo)
+        run: |
+          cd gym-api
+          docker build -t 437644723915.dkr.ecr.us-east-1.amazonaws.com/gymstore-api:latest .
+          docker push 437644723915.dkr.ecr.us-east-1.amazonaws.com/gymstore-api:latest
+
+      - name: Construir y Subir Imagen ECR (Usuarios)
+        run: |
+          cd ms-usuario
+          docker build -t 437644723915.dkr.ecr.us-east-1.amazonaws.com/gymstore-user-api:latest .
+          docker push 437644723915.dkr.ecr.us-east-1.amazonaws.com/gymstore-user-api:latest
 
   # ==========================================
-  # 5. DESPLIEGUE A EC2 USANDO SSH (FALLBACK SEGURO)
+  # 5. DESPLIEGUE A EC2 USANDO KUBERNETES (K3S)
   # ==========================================
   deploy-ec2-ssh:
     needs: docker-publish
@@ -167,16 +168,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copiar docker-compose.yml a EC2
+      - name: Copiar manifiestos K8s a EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml"
+          source: "k8s/*"
           target: "/home/ec2-user/"
 
-      - name: Ejecutar despliegue en EC2
+      - name: Ejecutar despliegue en Kubernetes (K3s)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -184,20 +185,26 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ec2-user
+            export KUBECONFIG=/home/ec2-user/.kube/config
             
-            # Cambiar 'build' por las imágenes reales de Docker Hub
-            sed -i "s|build: ./gym-api|image: ${{ secrets.DOCKER_USERNAME }}/gymstore-api:latest|g" docker-compose.yml
-            sed -i "s|build: ./ms-usuario|image: ${{ secrets.DOCKER_USERNAME }}/gymstore-user-api:latest|g" docker-compose.yml
+            # Reemplazar variables en los manifiestos
+            sed -i "s|POSTGRES_USER_PLACEHOLDER|${{ secrets.DB_USER }}|g" k8s/*.yaml
+            sed -i "s|POSTGRES_PASSWORD_PLACEHOLDER|${{ secrets.DB_PASSWORD }}|g" k8s/*.yaml
             
-            export DB_USER="${{ secrets.DB_USER }}"
-            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            # Generar secreto de ECR en Kubernetes para descargar la imagen
+            # Usa el rol LabInstanceProfile de la instancia para obtener el token
+            aws ecr get-login-password --region us-east-1 | kubectl create secret docker-registry ecr-secret \
+              --docker-server=437644723915.dkr.ecr.us-east-1.amazonaws.com \
+              --docker-username=AWS \
+              --docker-password-stdin \
+              --dry-run=client -o yaml | kubectl apply -f -
             
-            # Iniciar sesión en DockerHub
-            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            # Eliminar recursos anteriores (borrón y cuenta nueva)
+            kubectl delete -f k8s/ --ignore-not-found=true
+            sleep 10
             
-            # Bajar imágenes actualizadas y levantar el servicio
-            docker-compose pull
-            docker-compose up -d --remove-orphans
+            # Aplicar los nuevos manifiestos
+            kubectl apply -f k8s/
             
             # Limpiar imágenes antiguas
-            docker image prune -af
+            sudo k3s crictl rmi --prune || true

@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/gym-api"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "maven"
+    directory: "/ms-usuario"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/gym-api"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/ms-usuario"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
