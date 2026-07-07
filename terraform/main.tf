@@ -109,7 +109,22 @@ resource "aws_instance" "gymstore_backend" {
 }
 
 # ==========================================
-# 4. Outputs
+# 4. Repositorios ECR para las Imágenes Docker
+# ==========================================
+resource "aws_ecr_repository" "gymstore_api_repo" {
+  name                 = "gymstore-api"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+}
+
+resource "aws_ecr_repository" "gymstore_user_api_repo" {
+  name                 = "gymstore-user-api"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+}
+
+# ==========================================
+# 5. Outputs
 # ==========================================
 output "ec2_public_ip" {
   description = "Dirección IP pública de la EC2 (AGREGA EN GITHUB COMO 'EC2_HOST')"

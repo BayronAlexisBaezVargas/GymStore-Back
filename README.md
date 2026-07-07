@@ -5,7 +5,7 @@ API REST y ecosistema de microservicios para la gestión y venta de productos de
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-blue?logo=githubactions)
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.3-green?logo=springboot)
-![Docker](https://img.shields.io/badge/Docker-Hub-blue?logo=docker)
+![Docker](https://img.shields.io/badge/Amazon%20ECR-Registry-blue?logo=amazonaws)
 ![Terraform](https://img.shields.io/badge/Terraform-IaC-purple?logo=terraform)
 ![AWS](https://img.shields.io/badge/AWS-EC2-orange?logo=amazon-aws)
 
@@ -95,7 +95,7 @@ Push a main
        └────────┬────────┘
                 ▼
 ┌─────────────────────────────────┐
-│ 4. docker-publish (Docker Hub)  │ → Sube las imágenes a Docker Hub
+│ 4. docker-publish (Amazon ECR)  │ → Sube las imágenes a Amazon ECR
 └───────────────┬─────────────────┘
                 ▼
 ┌─────────────────────────────────┐
@@ -113,8 +113,9 @@ Para que el pipeline funcione de manera autónoma, configura los siguientes secr
 |---|---|
 | `EC2_HOST` | La IP pública de tu EC2 (Output de Terraform) |
 | `EC2_SSH_KEY` | La llave privada RSA completa (Output de Terraform) |
-| `DOCKER_USERNAME` | Tu usuario de Docker Hub |
-| `DOCKER_PASSWORD` | Tu token de acceso de Docker Hub |
+| `AWS_ACCESS_KEY_ID` | Access Key de tu cuenta AWS |
+| `AWS_SECRET_ACCESS_KEY` | Secret Key de tu cuenta AWS |
+| `AWS_SESSION_TOKEN` | Token de sesión (Obligatorio en AWS Academy/Vocareum) |
 | `DB_USER` | Usuario de la BD PostgreSQL |
 | `DB_PASSWORD` | Contraseña segura para PostgreSQL |
 | `SONAR_TOKEN` | Token de autenticación de SonarCloud |

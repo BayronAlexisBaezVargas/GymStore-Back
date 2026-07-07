@@ -12,9 +12,11 @@ spec:
       labels:
         app: ms-usuario
     spec:
+      imagePullSecrets:
+        - name: ecr-secret
       containers:
         - name: ms-usuario
-          image: MS_USUARIO_IMAGE_PLACEHOLDER
+          image: 437644723915.dkr.ecr.us-east-1.amazonaws.com/gymstore-user-api:latest
           imagePullPolicy: Always
           env:
             - name: DB_URL

@@ -12,9 +12,11 @@ spec:
       labels:
         app: gym-api
     spec:
+      imagePullSecrets:
+        - name: ecr-secret
       containers:
         - name: gym-api
-          image: GYM_API_IMAGE_PLACEHOLDER
+          image: 437644723915.dkr.ecr.us-east-1.amazonaws.com/gymstore-api:latest
           imagePullPolicy: Always
           env:
             - name: DB_URL
