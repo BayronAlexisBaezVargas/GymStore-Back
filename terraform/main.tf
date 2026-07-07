@@ -75,7 +75,7 @@ data "aws_ami" "amazon_linux_2023" {
 
 resource "aws_instance" "gymstore_backend" {
   ami                  = data.aws_ami.amazon_linux_2023.id
-  instance_type        = "t2.micro"
+  instance_type        = "t3.medium" # Se cambia a t3.medium (4GB RAM) porque t2.micro (1GB) no soporta K3s + 2 Spring Boot + Postgres simultáneamente sin colapsar.
   
   iam_instance_profile = "myS3Role"
   key_name             = aws_key_pair.gymstore_key_pair.key_name
@@ -86,19 +86,23 @@ resource "aws_instance" "gymstore_backend" {
   user_data = <<-EOF
               #!/bin/bash
               dnf update -y
-              dnf install docker amazon-cloudwatch-agent -y
-              systemctl enable docker
-              systemctl start docker
+              dnf install amazon-cloudwatch-agent -y
               systemctl enable amazon-cloudwatch-agent
               systemctl start amazon-cloudwatch-agent
-              usermod -aG docker ec2-user
               
-              curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-              chmod +x /usr/local/bin/docker-compose
+              # Instalar K3s (Kubernetes ligero)
+              curl -sfL https://get.k3s.io | sh -
+              
+              # Configurar K3s para que ec2-user pueda usar kubectl
+              sleep 10
+              mkdir -p /home/ec2-user/.kube
+              cp /etc/rancher/k3s/k3s.yaml /home/ec2-user/.kube/config
+              chown -R ec2-user:ec2-user /home/ec2-user/.kube
+              echo 'export KUBECONFIG=/home/ec2-user/.kube/config' >> /home/ec2-user/.bashrc
               EOF
 
   tags = {
-    Name = "GymStore-Backend"
+    Name = "GymStore-K8s-Cluster"
   }
 }
 

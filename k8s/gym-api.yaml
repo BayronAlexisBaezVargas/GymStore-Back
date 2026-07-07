@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gym-api-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gym-api
+  template:
+    metadata:
+      labels:
+        app: gym-api
+    spec:
+      containers:
+        - name: gym-api
+          image: GYM_API_IMAGE_PLACEHOLDER
+          imagePullPolicy: Always
+          env:
+            - name: DB_URL
+              value: "jdbc:postgresql://postgres:5432/gymstore_db"
+            - name: DB_USER
+              value: "POSTGRES_USER_PLACEHOLDER"
+            - name: DB_PASSWORD
+              value: "POSTGRES_PASSWORD_PLACEHOLDER"
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gym-api-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: gym-api
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080

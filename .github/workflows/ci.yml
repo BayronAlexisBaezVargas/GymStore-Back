@@ -86,7 +86,6 @@ jobs:
           -Dsonar.host.url=https://sonarcloud.io 
           -Dsonar.login=${{ secrets.SONAR_TOKEN }} 
           -DskipTests
-        continue-on-error: true
 
   # ==========================================
   # 3. ESCANEO DE VULNERABILIDADES CON SNYK
@@ -99,7 +98,6 @@ jobs:
 
       - name: Análisis de Dependencias con Snyk (Catálogo)
         uses: snyk/actions/maven@master
-        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -107,7 +105,6 @@ jobs:
 
       - name: Análisis de Dependencias con Snyk (Usuarios)
         uses: snyk/actions/maven@master
-        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -158,7 +155,7 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/gymstore-user-api:latest
 
   # ==========================================
-  # 5. DESPLIEGUE A EC2 USANDO SSH (FALLBACK SEGURO)
+  # 5. DESPLIEGUE A EC2 USANDO KUBERNETES (K3S)
   # ==========================================
   deploy-ec2-ssh:
     needs: docker-publish
@@ -167,16 +164,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copiar docker-compose.yml a EC2
+      - name: Copiar manifiestos K8s a EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml"
+          source: "k8s/*"
           target: "/home/ec2-user/"
 
-      - name: Ejecutar despliegue en EC2
+      - name: Ejecutar despliegue en Kubernetes (K3s)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -185,19 +182,23 @@ jobs:
           script: |
             cd /home/ec2-user
             
-            # Cambiar 'build' por las imágenes reales de Docker Hub
-            sed -i "s|build: ./gym-api|image: ${{ secrets.DOCKER_USERNAME }}/gymstore-api:latest|g" docker-compose.yml
-            sed -i "s|build: ./ms-usuario|image: ${{ secrets.DOCKER_USERNAME }}/gymstore-user-api:latest|g" docker-compose.yml
+            # Reemplazar variables en los manifiestos
+            sed -i "s|POSTGRES_USER_PLACEHOLDER|${{ secrets.DB_USER }}|g" k8s/*.yaml
+            sed -i "s|POSTGRES_PASSWORD_PLACEHOLDER|${{ secrets.DB_PASSWORD }}|g" k8s/*.yaml
+            sed -i "s|GYM_API_IMAGE_PLACEHOLDER|${{ secrets.DOCKER_USERNAME }}/gymstore-api:latest|g" k8s/*.yaml
+            sed -i "s|MS_USUARIO_IMAGE_PLACEHOLDER|${{ secrets.DOCKER_USERNAME }}/gymstore-user-api:latest|g" k8s/*.yaml
             
-            export DB_USER="${{ secrets.DB_USER }}"
-            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            # Exportar configuración de Kubernetes para ec2-user
+            export KUBECONFIG=/home/ec2-user/.kube/config
             
-            # Iniciar sesión en DockerHub
-            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            # Eliminar recursos anteriores (borrón y cuenta nueva)
+            kubectl delete -f k8s/ --ignore-not-found=true
             
-            # Bajar imágenes actualizadas y levantar el servicio
-            docker-compose pull
-            docker-compose up -d --remove-orphans
+            # Esperar a que se eliminen correctamente los pods anteriores
+            sleep 10
             
-            # Limpiar imágenes antiguas
-            docker image prune -af
+            # Aplicar los nuevos manifiestos
+            kubectl apply -f k8s/
+            
+            # Limpiar imágenes Docker antiguas sin uso en containerd (K3s usa containerd)
+            sudo k3s crictl rmi --prune || true

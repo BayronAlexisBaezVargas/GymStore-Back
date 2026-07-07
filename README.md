@@ -62,7 +62,7 @@ El código de Terraform automatiza la creación de:
 - Un **Security Group** con los puertos 8080, 8081 y 22 (SSH) abiertos.
 - Un **Log Group** de CloudWatch.
 - Una máquina **EC2 t2.micro** con `Amazon Linux 2023`.
-- Un script de *User Data* que instala automáticamente **Docker**, **Docker Compose** y el **Agente de CloudWatch**.
+- Un script de *User Data* que instala automáticamente **K3s (Kubernetes ligero)** y el **Agente de CloudWatch**.
 - Un par de **Llaves SSH RSA** generadas criptográficamente.
 
 ### ¿Cómo levantar la infraestructura?
@@ -100,7 +100,7 @@ Push a main
                 ▼
 ┌─────────────────────────────────┐
 │ 5. deploy-ec2-ssh (AWS EC2)     │ → Se conecta por SCP/SSH a la instancia,
-└─────────────────────────────────┘   configura el docker-compose y despliega.
+└─────────────────────────────────┘   aplica manifiestos en K3s (Kubernetes).
 ```
 
 ---
