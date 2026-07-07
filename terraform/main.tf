@@ -77,7 +77,7 @@ resource "aws_instance" "gymstore_backend" {
   ami                  = data.aws_ami.amazon_linux_2023.id
   instance_type        = "t3.medium" # Se cambia a t3.medium (4GB RAM) porque t2.micro (1GB) no soporta K3s + 2 Spring Boot + Postgres simultáneamente sin colapsar.
   
-  iam_instance_profile = "myS3Role"
+  iam_instance_profile = "LabInstanceProfile"
   key_name             = aws_key_pair.gymstore_key_pair.key_name
 
   vpc_security_group_ids = [aws_security_group.gymstore_sg.id]
@@ -86,9 +86,11 @@ resource "aws_instance" "gymstore_backend" {
   user_data = <<-EOF
               #!/bin/bash
               dnf update -y
-              dnf install amazon-cloudwatch-agent -y
+              dnf install amazon-cloudwatch-agent amazon-ssm-agent -y
               systemctl enable amazon-cloudwatch-agent
               systemctl start amazon-cloudwatch-agent
+              systemctl enable amazon-ssm-agent
+              systemctl start amazon-ssm-agent
               
               # Instalar K3s (Kubernetes ligero)
               curl -sfL https://get.k3s.io | sh -
