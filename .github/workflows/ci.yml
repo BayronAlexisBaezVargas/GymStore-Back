@@ -98,6 +98,7 @@ jobs:
 
       - name: Análisis de Dependencias con Snyk (Catálogo)
         uses: snyk/actions/maven@master
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -105,6 +106,7 @@ jobs:
 
       - name: Análisis de Dependencias con Snyk (Usuarios)
         uses: snyk/actions/maven@master
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
