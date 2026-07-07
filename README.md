@@ -1,271 +1,178 @@
-# 🏋️ GymStore
+# 🏋️ GymStore Backend - Arquitectura de Microservicios
 
-API REST para la gestión y venta de productos deportivos, construida con Spring Boot 3 y PostgreSQL.
+API REST y ecosistema de microservicios para la gestión y venta de productos deportivos, construida con Spring Boot 3, PostgreSQL y desplegada de forma automatizada en AWS.
 
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-blue?logo=githubactions)
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.3-green?logo=springboot)
-![Docker](https://img.shields.io/badge/Docker-Hub-blue?logo=docker)
+![Docker](https://img.shields.io/badge/Amazon%20ECR-Registry-blue?logo=amazonaws)
+![Terraform](https://img.shields.io/badge/Terraform-IaC-purple?logo=terraform)
+![AWS](https://img.shields.io/badge/AWS-EC2-orange?logo=amazon-aws)
 
 ---
 
 ## 📋 Tabla de contenidos
 
-- [Descripción](#descripción)
+- [Arquitectura de Microservicios](#arquitectura-de-microservicios)
 - [Tecnologías](#tecnologías)
-- [Requisitos previos](#requisitos-previos)
-- [Configuración](#configuración)
-- [Ejecución con Docker](#ejecución-con-docker)
-- [Endpoints principales](#endpoints-principales)
-- [Tests](#tests)
-- [Calidad y Seguridad](#calidad-y-seguridad)
-  - [JaCoCo — Cobertura de código](#jacoco--cobertura-de-código)
-  - [SonarCloud — Análisis de calidad](#sonarcloud--análisis-de-calidad)
-  - [Snyk — Análisis de vulnerabilidades](#snyk--análisis-de-vulnerabilidades)
+- [Infraestructura y Despliegue (Terraform & AWS)](#infraestructura-y-despliegue-terraform--aws)
 - [Pipeline CI/CD](#pipeline-cicd)
+- [Configuración de Secrets en GitHub](#configuración-de-secrets-en-github)
+- [Ejecución Local con Docker](#ejecución-local-con-docker)
+- [Calidad y Seguridad](#calidad-y-seguridad)
 - [Estructura del proyecto](#estructura-del-proyecto)
-- [Licencia](#licencia)
 
 ---
 
-## Descripción
+## 🏗️ Arquitectura de Microservicios
 
-GymStore es una aplicación backend que expone una API REST para gestionar la venta de productos deportivos. Permite administrar el catálogo de productos, procesar pedidos y gestionar la información relacionada con la tienda.
+Este proyecto ha evolucionado hacia una arquitectura de microservicios para garantizar alta disponibilidad y separación de responsabilidades. Actualmente contamos con:
+
+1. 📦 **Microservicio de Catálogo (`gym-api` | Puerto 8080)**: 
+   - Se encarga exclusivamente de gestionar toda la información y el CRUD de los accesorios y productos de la tienda.
+   
+2. 👤 **Microservicio de Usuarios y Autenticación (`ms-usuario` | Puerto 8081)**: 
+   - Manejo de registro e inicio de sesión (Login).
+   - Implementa seguridad robusta basada en **JWT (JSON Web Tokens)** y `Spring Security`.
+   - Protege rutas mediante tokens cifrados con HMAC SHA-256.
+
+*Próximos microservicios a implementar:* `order-service` (pedidos), `inventory-service` (inventario) y `payment-service` (pagos).
 
 ---
 
-## Tecnologías
+## 🛠️ Tecnologías
 
-| Tecnología | Versión |
+| Tecnología | Versión / Uso |
 |---|---|
-| Java | 17 |
-| Spring Boot | 3.4.3 |
-| Spring Data JPA | — |
-| Spring Validation | — |
-| Spring Actuator | — |
-| PostgreSQL | 42.7.5 |
-| Lombok | — |
-| JaCoCo | 0.8.12 |
-| H2 (tests) | — |
+| **Java** | 17 |
+| **Spring Boot** | 3.4.3 |
+| **Seguridad** | Spring Security 6 + JJWT (0.12.5) |
+| **Base de Datos** | PostgreSQL 15 |
+| **Infraestructura (IaC)**| Terraform |
+| **Nube (Cloud)** | AWS EC2 (Amazon Linux 2023) |
+| **Calidad / Seguridad** | SonarCloud, Snyk, JaCoCo |
 
 ---
 
-## Requisitos previos
+## ☁️ Infraestructura y Despliegue (Terraform & AWS)
 
-- [Docker](https://www.docker.com/) y [Docker Compose](https://docs.docker.com/compose/) instalados
-- Java 17+ (solo si se desea ejecutar localmente sin Docker)
-- Maven 3.8+ (solo si se desea ejecutar localmente sin Docker)
+Toda la infraestructura de la nube se maneja a través de código (IaC) en la carpeta `terraform/`. 
 
----
+El código de Terraform automatiza la creación de:
+- Un **Security Group** con los puertos 8080, 8081 y 22 (SSH) abiertos.
+- Un **Log Group** de CloudWatch.
+- Una máquina **EC2 t2.micro** con `Amazon Linux 2023`.
+- Un script de *User Data* que instala automáticamente **K3s (Kubernetes ligero)** y el **Agente de CloudWatch**.
+- Un par de **Llaves SSH RSA** generadas criptográficamente.
 
-## Configuración
-
-Crea un archivo `.env` en la raíz del proyecto con las siguientes variables (o configúralas directamente en `docker-compose.yml`):
-
-```env
-POSTGRES_DB=gymstore
-POSTGRES_USER=tu_usuario
-POSTGRES_PASSWORD=tu_contraseña
-SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/gymstore
-SPRING_DATASOURCE_USERNAME=tu_usuario
-SPRING_DATASOURCE_PASSWORD=tu_contraseña
-```
-
-Para el pipeline de GitHub Actions, estos secretos deben estar configurados en **Settings → Secrets and variables → Actions**:
-
-| Secret | Descripción |
-|---|---|
-| `DB_USER` | Usuario de la base de datos PostgreSQL |
-| `DB_PASSWORD` | Contraseña de la base de datos |
-| `SONAR_TOKEN` | Token de autenticación de SonarCloud |
-| `PROJECT_KEY_SONAR` | Clave del proyecto en SonarCloud |
-| `ORGANIZATION_SONAR` | Organización en SonarCloud |
-| `SNYK_TOKEN` | Token de autenticación de Snyk |
-| `DOCKER_PASSWORD` | Contraseña de Docker Hub |
-
----
-
-## Ejecución con Docker
-
-### 1. Clonar el repositorio
-
+### ¿Cómo levantar la infraestructura?
 ```bash
-git clone https://github.com/tu-usuario/gymstore.git
-cd gymstore
+cd terraform
+terraform init
+terraform apply -auto-approve
 ```
-
-### 2. Construir y levantar los contenedores
-
-```bash
-docker compose up --build
-```
-
-La aplicación estará disponible en: `http://localhost:8080`
-
-### 3. Detener los contenedores
-
-```bash
-docker compose down
-```
-
-> Para eliminar también los volúmenes de base de datos:
-> ```bash
-> docker compose down -v
-> ```
-
-La imagen también está publicada en Docker Hub y puede ejecutarse directamente:
-
-```bash
-docker pull bayronbaez/gymstore-api:latest
-docker run -p 8080:8080 bayronbaez/gymstore-api:latest
-```
+Al finalizar, Terraform te entregará dos *Outputs* críticos (`ec2_public_ip` y `private_key_pem`) que usarás en tus variables de GitHub.
 
 ---
 
-## Endpoints principales
+## 🚀 Pipeline CI/CD
 
-La API base es: `http://localhost:8080/api`
+El pipeline automatizado en `.github/workflows/ci.yml` se activa con cada **push a la rama `main`** y ejecuta el siguiente flujo de *DevSecOps*:
 
-> Documentación completa disponible vía Actuator en `http://localhost:8080/actuator`
-
----
-
-## Tests
-
-El proyecto usa **H2** como base de datos en memoria para los tests, por lo que no requiere PostgreSQL al correrlos.
-
-```bash
-./mvnw test
-```
-
----
-
-## Calidad y Seguridad
-
-El proyecto integra tres herramientas que garantizan la calidad del código y la seguridad de las dependencias. Todas se ejecutan automáticamente en el pipeline de CI/CD.
-
-### JaCoCo — Cobertura de código
-
-[JaCoCo](https://www.jacoco.org/) (Java Code Coverage) mide qué porcentaje del código fuente es ejecutado durante las pruebas. Genera un reporte detallado por clase, método y línea, permitiendo identificar zonas sin cobertura.
-
-**Ejecutar localmente:**
-
-```bash
-./mvnw test
-```
-
-El reporte HTML se genera en:
-
-```
-target/site/jacoco/index.html
-```
-
----
-
-### SonarCloud — Análisis de calidad
-
-[SonarCloud](https://sonarcloud.io/) analiza el código en busca de:
-
-- **Bugs** — errores que pueden causar comportamientos inesperados en producción
-- **Code Smells** — código que funciona pero es difícil de mantener
-- **Duplicaciones** — bloques de código repetido
-- **Security Hotspots** — puntos del código que requieren revisión de seguridad
-
-El análisis se ejecuta automáticamente en cada push a `main`, después de que los tests pasen. Los resultados están disponibles en el dashboard de SonarCloud de la organización.
-
-**Ejecutar el análisis manualmente:**
-
-```bash
-mvn verify sonar:sonar \
-  -Dsonar.projectKey=TU_PROJECT_KEY \
-  -Dsonar.organization=TU_ORGANIZATION \
-  -Dsonar.host.url=https://sonarcloud.io \
-  -Dsonar.login=TU_SONAR_TOKEN
-```
-
----
-
-### Snyk — Análisis de vulnerabilidades
-
-[Snyk](https://snyk.io/) escanea las dependencias del `pom.xml` en busca de **vulnerabilidades conocidas (CVEs)**. Está configurado para fallar el pipeline si detecta vulnerabilidades de severidad **alta o crítica**, bloqueando así un despliegue inseguro.
-
-- Umbral de severidad configurado: `high`
-- El reporte JSON se guarda como artefacto del pipeline en GitHub Actions (`snyk-report.json`)
-- El paso usa `continue-on-error: true`, lo que permite que el reporte se guarde incluso si Snyk encuentra problemas
-
----
-
-## Pipeline CI/CD
-
-El pipeline se activa automáticamente con cada **push a la rama `main`** y ejecuta 4 etapas en orden:
-
-```
+```text
 Push a main
      │
      ▼
-┌─────────────────────┐
-│  1. build-and-test  │  → Levanta PostgreSQL con Docker Compose y ejecuta mvn test
-└─────────┬───────────┘
-          │
-     ┌────┴────┐
-     ▼         ▼
-┌─────────┐ ┌──────────┐
-│ 2. Sonar│ │ 3. Snyk  │  → Se ejecutan en paralelo, ambos dependen de build-and-test
-└────┬────┘ └─────┬────┘
-     └─────┬──────┘
-           ▼
-┌──────────────────────┐
-│  4. docker-publish   │  → Construye y sube la imagen a Docker Hub (bayronbaez/gymstore-api:latest)
-└──────────────────────┘
+┌─────────────────────────────────┐
+│ 1. build-and-test (Ambos MS)    │ → Levanta DB de pruebas y pasa mvn test
+└───────────────┬─────────────────┘
+                │
+       ┌────────┴────────┐
+       ▼                 ▼
+┌────────────┐     ┌────────────┐
+│  2. Sonar  │     │  3. Snyk   │ → Análisis de Calidad y CVEs en paralelo
+└──────┬─────┘     └─────┬──────┘
+       └────────┬────────┘
+                ▼
+┌─────────────────────────────────┐
+│ 4. docker-publish (Amazon ECR)  │ → Sube las imágenes a Amazon ECR
+└───────────────┬─────────────────┘
+                ▼
+┌─────────────────────────────────┐
+│ 5. deploy-ec2-ssh (AWS EC2)     │ → Se conecta por SCP/SSH a la instancia,
+└─────────────────────────────────┘   aplica manifiestos en K3s (Kubernetes).
 ```
-
-### Descripción de cada etapa
-
-| Etapa | Descripción |
-|---|---|
-| `build-and-test` | Configura Java 17, levanta la BD con Docker Compose y ejecuta los tests con Maven |
-| `security-sonar` | Analiza la calidad del código con SonarCloud (bugs, smells, duplicaciones) |
-| `security-snyk` | Escanea dependencias en busca de CVEs y guarda el reporte como artefacto |
-| `docker-publish` | Construye la imagen Docker y la publica en Docker Hub solo si las etapas anteriores pasan |
-
-> La imagen solo se publica si **todas** las etapas de calidad y seguridad fueron exitosas.
 
 ---
 
-## Arquitectura y Microservicios Próximos
+## 🔐 Configuración de Secrets en GitHub
 
-Este proyecto ha comenzado su evolución hacia una arquitectura de microservicios. Actualmente contamos con el microservicio inicial (`gym-api`), pero el ecosistema crecerá con los siguientes dominios:
+Para que el pipeline funcione de manera autónoma, configura los siguientes secretos en tu repositorio (`Settings → Secrets and variables → Actions`):
 
-1. 👤 **Microservicio de Usuarios y Autenticación (`gym-auth`)**: 
-   - **Próximamente:** Manejo de registro, inicio de sesión (Login con JWT) y recuperación de contraseñas. Gestión de perfiles y seguridad para proteger las rutas.
-2. 🗄️ **Microservicio de Inventario (`gym-inventory`)**: 
-   - **Próximamente:** Controlará el stock real de los productos (accesorios, suplementos, etc.). Aprenderemos cómo comunicar el catálogo con el inventario para reservar stock.
-3. 📦 **Microservicio de Catálogo (`gym-catalog`)**: 
-   - *Nota: Evolución de nuestro actual `gym-api`. Se encargará exclusivamente de gestionar toda la información y CRUD de los productos.*
-4. 🛒 **Microservicio de Órdenes (`gym-orders`)**: 
-   - **Futuro:** Manejo del carrito de compras y creación de la orden final comunicándose con el Catálogo y el Inventario.
-5. 💳 **Microservicio de Pagos (`gym-payments`)**: 
-   - **Futuro:** Integración con pasarelas de pago reales.
+| Secret | Descripción |
+|---|---|
+| `EC2_HOST` | La IP pública de tu EC2 (Output de Terraform) |
+| `EC2_SSH_KEY` | La llave privada RSA completa (Output de Terraform) |
+| `AWS_ACCESS_KEY_ID` | Access Key de tu cuenta AWS |
+| `AWS_SECRET_ACCESS_KEY` | Secret Key de tu cuenta AWS |
+| `AWS_SESSION_TOKEN` | Token de sesión (Obligatorio en AWS Academy/Vocareum) |
+| `DB_USER` | Usuario de la BD PostgreSQL |
+| `DB_PASSWORD` | Contraseña segura para PostgreSQL |
+| `SONAR_TOKEN` | Token de autenticación de SonarCloud |
+| `PROJECT_KEY_SONAR` | Clave del proyecto en SonarCloud |
+| `ORGANIZATION_SONAR`| Nombre de la organización en SonarCloud |
+| `SNYK_TOKEN` | Token de acceso a Snyk |
+
+---
+
+## 💻 Ejecución Local con Docker
+
+Puedes probar todo el ecosistema de microservicios en tu computadora con un solo comando.
+
+### 1. Clonar y Levantar
+```bash
+git clone https://github.com/tu-usuario/gymstore.git
+cd gymstore
+docker-compose up -d --build
+```
+
+Esto levantará 3 contenedores:
+1. `gym_postgres`: Base de datos en el puerto 5432.
+2. `gym_api`: Catálogo de accesorios en `http://localhost:8080/api/accesorios`
+3. `gym_user_api`: API de usuarios y JWT en `http://localhost:8081/api/auth/...`
+
+### 2. Probar Endpoints de Usuarios (JWT)
+*   **Registrar Usuario:** `POST http://localhost:8081/api/auth/register`
+*   **Hacer Login:** `POST http://localhost:8081/api/auth/login`
+*   **Ruta Protegida:** `GET http://localhost:8081/api/users/hello` (Requiere enviar el Token JWT en el Header `Authorization: Bearer <token>`).
+
+---
+
+## 🛡️ Calidad y Seguridad
+
+Este proyecto cuenta con integraciones de calidad activas en el CI/CD:
+
+- **SonarCloud:** Analiza bugs, duplicaciones y code smells. Requiere pasar el *Quality Gate* del proyecto.
+- **Snyk:** Escanea las dependencias en busca de vulnerabilidades (CVEs) de criticidad alta o extrema en ambos microservicios.
+- **JaCoCo:** Genera reportes de cobertura de código para los tests locales.
 
 ---
 
 ## 📁 Estructura del proyecto
 
-```
+```text
 gymstore/
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── gym-api/                  # Primer microservicio (Catálogo de accesorios)
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/Store/Gym/gymstore/
-│   │   │   └── resources/
-│   │   │       └── application.properties
-│   │   └── test/
-│   ├── Dockerfile
-│   └── pom.xml
-├── docker-compose.yml        # Orquestador central de microservicios
+├── .github/workflows/
+│   └── ci.yml                # Pipeline CI/CD automatizado
+├── gym-api/                  # Microservicio 1: Catálogo
+│   ├── src/main/java/...
+│   └── Dockerfile
+├── ms-usuario/               # Microservicio 2: Usuarios y JWT
+│   ├── src/main/java/.../security/ # Filtros y JwtUtil
+│   └── Dockerfile
+├── terraform/                # Infraestructura como Código (IaC)
+│   └── main.tf               # Configuración de AWS EC2, SG, Roles, y CloudWatch
+├── docker-compose.yml        # Orquestador local de microservicios
 └── README.md
 ```
 
