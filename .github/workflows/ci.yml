@@ -178,7 +178,7 @@ jobs:
           target: "/home/ec2-user/"
 
       - name: Ejecutar despliegue en Kubernetes (K3s)
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
