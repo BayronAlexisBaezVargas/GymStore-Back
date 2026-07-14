@@ -2,7 +2,7 @@
 # Etapa 1: Construcción (Build)
 # ==========================================
 # Usamos una imagen que tenga Maven y Java 17 para compilar
-FROM maven:3.9-eclipse-temurin-17-alpine AS builder
+FROM maven:3-eclipse-temurin-26-alpine AS builder
 
 # Establecemos el directorio de trabajo dentro del contenedor
 WORKDIR /app
